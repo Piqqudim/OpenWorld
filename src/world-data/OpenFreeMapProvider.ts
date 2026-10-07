@@ -79,7 +79,9 @@ export class OpenFreeMapProvider
           convertFeature(
             geojson,
             layerName,
-            feature.id,
+            tile,
+            index,
+            feature.id
           );
 
         features.push(
@@ -110,10 +112,14 @@ function convertFeature(
     GeoJsonProperties
   >,
   layerName: string,
+  tile: TileKey,
+  index: number | undefined,
   id?: number,
+  
 ): WorldFeature {
   return {
-    id: `${layerName}:${id ?? crypto.randomUUID()}`,
+   id:
+  `openfreemap:${tile.z}/${tile.x}/${tile.y}:${layerName}:${id ?? index}`,
 
     type: classifyFeature(
       layerName,

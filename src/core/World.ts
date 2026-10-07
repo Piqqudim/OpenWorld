@@ -169,4 +169,40 @@ export class World {
       );
     };
   }
+  removeObjectsBySource(
+  provider: string,
+  tilePrefix: string,
+): void {
+  const idsToRemove: string[] = [];
+
+  for (
+    const object of
+      this.objects.values()
+  ) {
+    if (
+      object.source?.provider !==
+      provider
+    ) {
+      continue;
+    }
+
+    if (
+      !object.id.startsWith(
+        tilePrefix,
+      )
+    ) {
+      continue;
+    }
+
+    idsToRemove.push(
+      object.id,
+    );
+  }
+
+  for (
+    const id of idsToRemove
+  ) {
+    this.removeObject(id);
+  }
+}
 }

@@ -14,6 +14,10 @@ import type {
   WorldFeatureStore,
 } from '../world-data/WorldFeatureStore';
 
+import {
+  toWorldObject,
+} from '../world-data/toWorldObject';
+
 type TileState =
   | 'loading'
   | 'loaded'
@@ -211,6 +215,13 @@ export class TileManager {
       }
 
       this.store.setTile(data);
+      for (
+     const feature of data.features
+    ) {
+    this.world.addObject(
+     toWorldObject(feature),
+    );
+    }
 
       const managed =
         this.tiles.get(id);

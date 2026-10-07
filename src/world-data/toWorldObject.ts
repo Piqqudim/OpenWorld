@@ -78,24 +78,27 @@ function getFirstCoordinate(
 ): [number, number] {
   switch (geometry.type) {
     case 'LineString':
-      return geometry.coordinates[0];
+      return [ geometry.coordinates[0][0], geometry.coordinates[1][1]];
 
     case 'Polygon':
-      return geometry.coordinates[0][0];
+      return [geometry.coordinates[0][0][0], geometry.coordinates[0][0][1]];
 
     case 'MultiPoint':
-      return geometry.coordinates[0];
+      return [geometry.coordinates[0][0], geometry.coordinates[0][1]];
 
     case 'MultiLineString':
-      return geometry.coordinates[0][0];
+      return [geometry.coordinates[0][0][0], geometry.coordinates[0][0][1]];
 
     case 'MultiPolygon':
-      return geometry.coordinates[0][0][0];
+      return [geometry.coordinates[0][0][0][0], geometry.coordinates[0][0][0][1]];
 
     case 'Point':
-      return geometry.coordinates;
+      return [geometry.coordinates[0],geometry.coordinates[1]];
 
     case 'GeometryCollection':
+        if(geometry.geometries.length === 0){
+            throw new Error("Geometry Collection contains no geometries");
+        }
       return getFirstCoordinate(
         geometry.geometries[0],
       );
