@@ -26,8 +26,8 @@ type TileState =
 interface ManagedTile {
   tile: TileKey;
   state: TileState;
+  objectIds: Set<string>;
 }
-
 export interface TileManagerOptions {
   radius?: number;
   minZoom?: number;
@@ -136,12 +136,11 @@ export class TileManager {
       if (existing) {
         continue;
       }
-
-      this.tiles.set(id, {
-        tile,
-        state: 'loading',
-      });
-
+this.tiles.set(id, {
+  tile,
+  state: 'loading',
+  objectIds: new Set(),
+});
       loading.push(
         this.loadTile(
           id,
@@ -208,29 +207,38 @@ export class TileManager {
        * don't blindly keep it.
        */
 
-      if (
-        version !== this.updateVersion
-      ) {
-        return;
-      }
+    if (
+  version !== this.updateVersion
+) {
+  const managed =
+    this.tiles.get(id);
+
+  if (managed?.state === 'loading') {
+    this.tiles.delete(id);
+  }
+
+  return;
+}
 
       this.store.setTile(data);
-      for (
-     const feature of data.features
-    ) {
-    this.world.addObject(
-     toWorldObject(feature),
-    );
-    }
+      const objects = data.features.map(
+  (feature) =>
+    toWorldObject(feature),
+);
 
-      const managed =
-        this.tiles.get(id);
+for (const object of objects) {
+  this.world.addObject(object);
+}
 
-      if (managed) {
-        managed.state =
-          'loaded';
-      }
+const managed = this.tiles.get(id);
 
+if (managed) {
+  for (const object of objects) {
+    managed.objectIds.add(object.id);
+  }
+
+  managed.state = 'loaded';
+}
       console.log(
         '[WorldStream] loaded',
         id,
@@ -248,36 +256,40 @@ export class TileManager {
     }
   }
 
-  private async unloadTile(
-    id: string,
-    tile: TileKey,
-  ): Promise<void> {
-    try {
-      this.store.removeTile(
-        tile,
-      );
+private async unloadTile(
+  id: string,
+  tile: TileKey,
+): Promise<void> {
+  const managed =
+    this.tiles.get(id);
 
-      await this.provider.unloadTile(
-        tile,
-      );
-
-      this.tiles.delete(id);
-
-      console.log(
-        '[WorldStream] unloaded',
-        id,
-      );
-    } catch (error) {
-      console.error(
-        '[WorldStream] unload failed',
-        id,
-        error,
-      );
-
-      this.tiles.delete(id);
+  try {
+    if (managed) {
+      for (const objectId of managed.objectIds) {
+        this.world.removeObject(objectId);
+      }
     }
-  }
 
+    this.store.removeTile(tile);
+
+    await this.provider.unloadTile(tile);
+
+    this.tiles.delete(id);
+
+    console.log(
+      '[WorldStream] unloaded',
+      id,
+    );
+  } catch (error) {
+    console.error(
+      '[WorldStream] unload failed',
+      id,
+      error,
+    );
+
+    this.tiles.delete(id);
+  }
+}
   private calculateRequiredTiles():
     Map<string, TileKey> {
     const location =

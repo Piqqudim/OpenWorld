@@ -18,6 +18,11 @@ const SOURCE_ID =
   'world-features';
 
 export class WorldFeatureRenderer {
+    private selectedObjectId:
+  string | null = null;
+
+private selectedObjectInitialized =
+  false;
   constructor(
     private readonly map: Map,
     private readonly store: WorldFeatureStore,
@@ -41,8 +46,20 @@ export class WorldFeatureRenderer {
           this.createFeatureCollection(),
       },
     );
+    this.map.addSource('world-selection', {
+    type: 'geojson',
+    data: {
+     type: 'FeatureCollection',
+     features: [],
+     },
+    });
 
     this.addLayers();
+    this.addSelectionLayers();
+
+this.selectedObjectInitialized = true;
+
+this.updateSelection();
 
     this.update();
   }
@@ -60,7 +77,75 @@ export class WorldFeatureRenderer {
     source.setData(
       this.createFeatureCollection(),
     );
+    this.updateSelection();
   }
+  setSelectedObject(
+  objectId: string | null,
+): void {
+  this.selectedObjectId =
+    objectId;
+
+  this.updateSelection();
+}
+private updateSelection(): void {
+  if (!this.selectedObjectInitialized) {
+    return;
+  }
+
+  const source =
+    this.map.getSource(
+      'world-selection',
+    ) as GeoJSONSource | undefined;
+
+  if (
+    !source ||
+    source.type !== 'geojson'
+  ) {
+    return;
+  }
+
+  if (
+    !this.selectedObjectId
+  ) {
+    source.setData({
+      type: 'FeatureCollection',
+      features: [],
+    });
+
+    return;
+  }
+
+  const object =
+    this.store
+      .getFeatures()
+      .find(
+        (feature) =>
+          feature.id ===
+          this.selectedObjectId,
+      );
+
+  if (!object) {
+    source.setData({
+      type: 'FeatureCollection',
+      features: [],
+    });
+
+    return;
+  }
+
+  source.setData({
+    type: 'FeatureCollection',
+
+    features: [
+      {
+        type: 'Feature',
+        id: object.id,
+        geometry: object.geometry,
+        properties: {},
+      },
+    ],
+  });
+}
 
   private createFeatureCollection(): FeatureCollection {
     const features =
@@ -98,6 +183,49 @@ export class WorldFeatureRenderer {
           ),
     };
   }
+  private addSelectionLayers(): void {
+  this.map.addLayer({
+    id: 'world-selection-fill',
+    type: 'fill',
+    source: 'world-selection',
+    filter: [
+      '==',
+      '$type',
+      'Polygon',
+    ],
+    paint: {
+      'fill-color': '#00e5ff',
+      'fill-opacity': 0.35,
+      'fill-outline-color': '#00e5ff',
+    },
+  });
+
+  this.map.addLayer({
+    id: 'world-selection-line',
+    type: 'line',
+    source: 'world-selection',
+    filter: [
+      '==',
+      '$type',
+      'LineString',
+    ],
+    paint: {
+      'line-color': '#00e5ff',
+      'line-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        8,
+        3,
+        14,
+        7,
+        18,
+        10,
+      ],
+      'line-opacity': 1,
+    },
+  });
+}
 
   private addLayers(): void {
     this.map.addLayer({

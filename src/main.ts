@@ -63,7 +63,13 @@ const featureRenderer =
     renderer.map,
     featureStore,
   );
-
+world.onSelectionChanged(
+  (object) => {
+    featureRenderer.setSelectedObject(
+      object?.id ?? null,
+    );
+  },
+);
 renderer.onReady(() => {
   featureRenderer.initialize();
 });

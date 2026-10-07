@@ -10,11 +10,18 @@ export type WorldObjectListener = (
   object: WorldObject,
 ) => void;
 
+export type WorldSelectionListener = (
+  object: WorldObject | null,
+) => void;
+
 export class World {
   readonly camera: WorldCamera;
 
   private objects =
     new Map<string, WorldObject>();
+
+  private selectedObjectId: string | null =
+    null;
 
   private cameraListeners =
     new Set<WorldListener>();
@@ -24,6 +31,9 @@ export class World {
 
   private objectRemovedListeners =
     new Set<(id: string) => void>();
+
+  private selectionListeners =
+    new Set<WorldSelectionListener>();
 
   constructor(
     camera: WorldCamera,
@@ -64,6 +74,19 @@ export class World {
 
     this.objects.delete(id);
 
+    if (
+      this.selectedObjectId === id
+    ) {
+      this.selectedObjectId = null;
+
+      for (
+        const listener of
+          this.selectionListeners
+      ) {
+        listener(null);
+      }
+    }
+
     for (
       const listener of
         this.objectRemovedListeners
@@ -97,6 +120,68 @@ export class World {
   getLocation(): WorldCoordinate {
     return {
       ...this.camera.position,
+    };
+  }
+
+  selectObject(
+    id: string | null,
+  ): void {
+    if (id === null) {
+      this.selectedObjectId = null;
+
+      for (
+        const listener of
+          this.selectionListeners
+      ) {
+        listener(null);
+      }
+
+      return;
+    }
+
+    const object =
+      this.objects.get(id);
+
+    if (!object) {
+      return;
+    }
+
+    this.selectedObjectId = id;
+
+    for (
+      const listener of
+        this.selectionListeners
+    ) {
+      listener(object);
+    }
+  }
+
+  getSelectedObject():
+    WorldObject | null {
+    if (
+      this.selectedObjectId === null
+    ) {
+      return null;
+    }
+
+    return (
+      this.objects.get(
+        this.selectedObjectId,
+      ) ?? null
+    );
+  }
+
+  onSelectionChanged(
+    listener: WorldSelectionListener,
+  ): () => void {
+    this.selectionListeners.add(
+      listener,
+    );
+
+    return () => {
+      this.selectionListeners.delete(
+        listener,
+      );
     };
   }
 
@@ -169,40 +254,4 @@ export class World {
       );
     };
   }
-  removeObjectsBySource(
-  provider: string,
-  tilePrefix: string,
-): void {
-  const idsToRemove: string[] = [];
-
-  for (
-    const object of
-      this.objects.values()
-  ) {
-    if (
-      object.source?.provider !==
-      provider
-    ) {
-      continue;
-    }
-
-    if (
-      !object.id.startsWith(
-        tilePrefix,
-      )
-    ) {
-      continue;
-    }
-
-    idsToRemove.push(
-      object.id,
-    );
-  }
-
-  for (
-    const id of idsToRemove
-  ) {
-    this.removeObject(id);
-  }
-}
 }
