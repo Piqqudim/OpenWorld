@@ -211,39 +211,50 @@ export class WorldFeatureRenderer {
           '#b0a08a',
       },
     });
+ 
     this.map.addLayer({
-  id: 'world-buildings-3d',
-  type: 'fill-extrusion',
-  source: SOURCE_ID,
+      id: 'world-buildings-3d',
+      type: 'fill-extrusion',
+      source: SOURCE_ID,
 
-  filter: [
-    'all',
-    ['==', '$type', 'Polygon'],
-    ['==', 'worldType', 'building'],
-  ],
+      minzoom: 14,
 
-  minzoom: 14,
+      filter: [
+        'all',
+        ['==', '$type', 'Polygon'],
+        ['==', 'worldType', 'building'],
+      ],
 
-  paint: {
-    'fill-extrusion-color': '#b8aa96',
+      paint: {
+        'fill-extrusion-color':
+          '#b8aa96',
 
-    'fill-extrusion-height': [
-      'coalesce',
-      ['get', 'render_height'],
-      ['get', 'height'],
-      8,
-    ],
+        'fill-extrusion-height': [
+          'coalesce',
 
-    'fill-extrusion-base': [
-      'coalesce',
-      ['get', 'render_min_height'],
-      ['get', 'min_height'],
-      0,
-    ],
+          ['get', 'render_height'],
 
-    'fill-extrusion-opacity': 0.9,
-  },
-});
+          ['get', 'height'],
+
+          8,
+        ],
+
+        'fill-extrusion-base': [
+          'coalesce',
+
+          ['get', 'render_min_height'],
+
+          ['get', 'min_height'],
+
+          0,
+        ],
+
+        'fill-extrusion-opacity':
+          0.9,
+
+        'fill-extrusion-vertical-gradient':
+          true,
+      },
+    });
   }
 }
-

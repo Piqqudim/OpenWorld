@@ -41,7 +41,6 @@ if (!container) {
     'World container not found',
   );
 }
-
 const renderer =
   new MapRenderer(
     container,
@@ -52,6 +51,7 @@ new InteractionSystem(
   world,
   renderer,
 );
+
 const dataProvider =
   new OpenFreeMapProvider();
 
@@ -83,17 +83,14 @@ const tileManager =
       maxZoom: 14,
     },
   );
-tileManager.update();
+
+void tileManager.update();
 
 renderer.onMoveEnd(() => {
-  tileManager.update();
+ void tileManager.update();
 
   console.log(
     '[WorldStream] active tiles:',
     tileManager.getActiveTiles(),
   );
 });
-
-console.log(
-  'Open World initialized',
-);

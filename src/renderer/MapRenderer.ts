@@ -113,9 +113,14 @@ export class MapRenderer {
   destroy(): void {
     this.map.remove();
   }
-  onReady(
+onReady(
   callback: () => void,
 ): void {
+  if (this.map.isStyleLoaded()) {
+    callback();
+    return;
+  }
+
   this.map.once(
     'style.load',
     callback,

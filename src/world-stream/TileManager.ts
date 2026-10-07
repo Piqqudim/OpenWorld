@@ -9,9 +9,20 @@ import {
 import type {
   WorldDataProvider,
 } from '../world-data/WorldDataProvider';
+
 import type {
   WorldFeatureStore,
 } from '../world-data/WorldFeatureStore';
+
+type TileState =
+  | 'loading'
+  | 'loaded'
+  | 'unloading';
+
+interface ManagedTile {
+  tile: TileKey;
+  state: TileState;
+}
 
 export interface TileManagerOptions {
   radius?: number;
@@ -24,15 +35,24 @@ export class TileManager {
   private readonly minZoom: number;
   private readonly maxZoom: number;
 
-  private activeTiles =
-    new Map<string, TileKey>();
+  private readonly tiles =
+    new Map<string, ManagedTile>();
+
+  private updateVersion = 0;
+
+  private updateRunning = false;
 
   constructor(
-  private readonly world: World,
-  private readonly provider: WorldDataProvider,
-  private readonly store: WorldFeatureStore,
-  options: TileManagerOptions = {},
-) {
+    private readonly world: World,
+
+    private readonly provider:
+      WorldDataProvider,
+
+    private readonly store:
+      WorldFeatureStore,
+
+    options: TileManagerOptions = {},
+  ) {
     this.radius =
       options.radius ?? 2;
 
@@ -43,19 +63,225 @@ export class TileManager {
       options.maxZoom ?? 14;
   }
 
-  update(): void {
+  async update(): Promise<void> {
+    const version =
+      ++this.updateVersion;
+
+    if (this.updateRunning) {
+      return;
+    }
+
+    this.updateRunning = true;
+
+    try {
+      await this.processUpdate(
+        version,
+      );
+    } finally {
+      this.updateRunning = false;
+
+      /*
+       * Camera may have moved while
+       * we were loading tiles.
+       *
+       * Run again using the newest
+       * camera position.
+       */
+
+      if (
+        version !== this.updateVersion
+      ) {
+        void this.update();
+      }
+    }
+  }
+
+  getActiveTiles(): TileKey[] {
+    return [
+      ...this.tiles.values(),
+    ]
+      .filter(
+        (entry) =>
+          entry.state === 'loaded' ||
+          entry.state === 'loading',
+      )
+      .map(
+        (entry) =>
+          entry.tile,
+      );
+  }
+
+  private async processUpdate(
+    version: number,
+  ): Promise<void> {
+    const required =
+      this.calculateRequiredTiles();
+
+    /*
+     * Start loading required tiles.
+     */
+
+    const loading: Promise<void>[] = [];
+
+    for (
+      const [id, tile] of required
+    ) {
+      const existing =
+        this.tiles.get(id);
+
+      if (existing) {
+        continue;
+      }
+
+      this.tiles.set(id, {
+        tile,
+        state: 'loading',
+      });
+
+      loading.push(
+        this.loadTile(
+          id,
+          tile,
+          version,
+        ),
+      );
+    }
+
+    /*
+     * Remove tiles that are no
+     * longer required.
+     */
+
+    const unloading: Promise<void>[] = [];
+
+    for (
+      const [id, managed] of this.tiles
+    ) {
+      if (
+        required.has(id)
+      ) {
+        continue;
+      }
+
+      if (
+        managed.state ===
+        'unloading'
+      ) {
+        continue;
+      }
+
+      managed.state =
+        'unloading';
+
+      unloading.push(
+        this.unloadTile(
+          id,
+          managed.tile,
+        ),
+      );
+    }
+
+    await Promise.all([
+      ...loading,
+      ...unloading,
+    ]);
+  }
+
+  private async loadTile(
+    id: string,
+    tile: TileKey,
+    version: number,
+  ): Promise<void> {
+    try {
+      const data =
+        await this.provider.loadTile(
+          tile,
+        );
+
+      /*
+       * If the camera moved while
+       * this tile was downloading,
+       * don't blindly keep it.
+       */
+
+      if (
+        version !== this.updateVersion
+      ) {
+        return;
+      }
+
+      this.store.setTile(data);
+
+      const managed =
+        this.tiles.get(id);
+
+      if (managed) {
+        managed.state =
+          'loaded';
+      }
+
+      console.log(
+        '[WorldStream] loaded',
+        id,
+        'features:',
+        data.features.length,
+      );
+    } catch (error) {
+      this.tiles.delete(id);
+
+      console.error(
+        '[WorldStream] failed',
+        id,
+        error,
+      );
+    }
+  }
+
+  private async unloadTile(
+    id: string,
+    tile: TileKey,
+  ): Promise<void> {
+    try {
+      this.store.removeTile(
+        tile,
+      );
+
+      await this.provider.unloadTile(
+        tile,
+      );
+
+      this.tiles.delete(id);
+
+      console.log(
+        '[WorldStream] unloaded',
+        id,
+      );
+    } catch (error) {
+      console.error(
+        '[WorldStream] unload failed',
+        id,
+        error,
+      );
+
+      this.tiles.delete(id);
+    }
+  }
+
+  private calculateRequiredTiles():
+    Map<string, TileKey> {
     const location =
       this.world.getLocation();
 
-    const zoom = Math.round(
-      Math.min(
-        Math.max(
-          this.world.camera.zoom,
-          this.minZoom,
+    const zoom =
+      Math.round(
+        Math.min(
+          Math.max(
+            this.world.camera.zoom,
+            this.minZoom,
+          ),
+          this.maxZoom,
         ),
-        this.maxZoom,
-      ),
-    );
+      );
 
     const center =
       worldToTile(
@@ -64,21 +290,10 @@ export class TileManager {
         zoom,
       );
 
-    const required =
-      this.getRequiredTiles(
-        center,
-        this.radius,
-      );
-
-    void this.loadRequired(required);
-
-    void this.unloadUnused(required);
-  }
-
-  getActiveTiles(): TileKey[] {
-    return [
-      ...this.activeTiles.values(),
-    ];
+    return this.getRequiredTiles(
+      center,
+      this.radius,
+    );
   }
 
   private getRequiredTiles(
@@ -101,8 +316,11 @@ export class TileManager {
         dx <= radius;
         dx++
       ) {
-        let x = center.x + dx;
-        const y = center.y + dy;
+        let x =
+          center.x + dx;
+
+        const y =
+          center.y + dy;
 
         if (
           y < 0 ||
@@ -130,85 +348,5 @@ export class TileManager {
     }
 
     return required;
-  }
-
-  private async loadRequired(
-    required: Map<string, TileKey>,
-  ): Promise<void> {
-    
-    for (
-      const [id, tile] of required
-    ) {
-      if (
-        this.activeTiles.has(id)
-      ) {
-        continue;
-      }
-
-      this.activeTiles.set(
-        id,
-        tile,
-      );
-
-      try {
-        await this.provider.loadTile(
-          tile,
-        );
-
-        console.log(
-          '[WorldStream] loaded',
-          id,
-        );
-      } catch (error) {
-        this.activeTiles.delete(id);
-
-        console.error(
-          '[WorldStream] failed',
-          id,
-          error,
-        );
-      }
-      const data =
-  await this.provider.loadTile(
-    tile,
-  );
-
-this.store.setTile(data);
-
-console.log(
-  '[WorldStream] loaded',
-  id,
-  'features:',
-  data.features.length,
-  'total:',
-  this.store.getFeatureCount(),
-);
-    }
-  }
-
-  private async unloadUnused(
-    required: Map<string, TileKey>,
-  ): Promise<void> {
-    for (
-      const [id, tile] of this.activeTiles
-    ) {
-      if (
-        required.has(id)
-      ) {
-        continue;
-      }
-
-      this.activeTiles.delete(id);
-
-     this.store.removeTile(tile);
-
-    await this.provider.unloadTile(tile);
-
-      console.log(
-        '[WorldStream] unloaded',
-        id,
-      );
-      
-    }
   }
 }
