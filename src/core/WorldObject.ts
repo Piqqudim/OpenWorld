@@ -1,7 +1,6 @@
 import type { Geometry } from 'geojson';
 
 import type { WorldDimensions } from './WorldDimensions';
-import type { WorldCoordinate } from './WorldCoordinate';
 import type { WorldTransform } from './WorldTransform';
 
 export type WorldObjectType =

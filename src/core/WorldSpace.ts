@@ -127,7 +127,6 @@ export class WorldSpace {
   }
 
   distance(
-    a: WorldCoordinate,
     b: WorldCoordinate,
   ): number {
     const local =
