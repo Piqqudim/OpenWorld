@@ -1,6 +1,7 @@
 import type { WorldCamera } from './WorldCamera';
 import type { WorldCoordinate } from './WorldCoordinate';
 import type { WorldObject } from './WorldObject';
+
 import {
   WorldSpace,
 } from './WorldSpace';
@@ -21,32 +22,33 @@ export class World {
   readonly camera: WorldCamera;
   readonly space: WorldSpace;
 
-  private objects =
+  private readonly objects =
     new Map<string, WorldObject>();
 
-  private selectedObjectId: string | null =
-    null;
+  private selectedObjectId:
+    string | null = null;
 
-  private cameraListeners =
+  private readonly cameraListeners =
     new Set<WorldListener>();
 
-  private objectAddedListeners =
+  private readonly objectAddedListeners =
     new Set<WorldObjectListener>();
 
-  private objectRemovedListeners =
+  private readonly objectRemovedListeners =
     new Set<(id: string) => void>();
 
-  private selectionListeners =
+  private readonly selectionListeners =
     new Set<WorldSelectionListener>();
 
   constructor(
     camera: WorldCamera,
   ) {
     this.camera = camera;
+
     this.space =
-    new WorldSpace(
-      camera.position,
-    );
+      new WorldSpace(
+        camera.position,
+      );
   }
 
   addObject(
@@ -118,7 +120,8 @@ export class World {
   getObjectsByType(
     type: WorldObject['type'],
   ): WorldObject[] {
-    return this.getObjects()
+    return this
+      .getObjects()
       .filter(
         (object) =>
           object.type === type,
@@ -130,16 +133,21 @@ export class World {
       ...this.camera.position,
     };
   }
- getObjectLocalPosition(
-  object: WorldObject,
-) {
-  return this.space.toLocal(
-    object.transform.position,
-  );
-}
+
+  getObjectLocalPosition(
+    object: WorldObject,
+  ) {
+    return this.space.toLocal(
+      object.transform.position,
+    );
+  }
+
   selectObject(
     id: string | null,
   ): void {
+    /*
+     * Clear selection.
+     */
     if (id === null) {
       this.selectedObjectId = null;
 
@@ -156,7 +164,15 @@ export class World {
     const object =
       this.objects.get(id);
 
+    /*
+     * The renderer may have given us an ID
+     * that does not exist in the World.
+     */
     if (!object) {
+      console.warn(
+        `World.selectObject(): object "${id}" was not found.`,
+      );
+
       return;
     }
 
@@ -205,13 +221,13 @@ export class World {
     bearing: number,
     pitch: number,
   ): void {
-    this.camera.position =
-      coordinate;
+    this.camera.position = {
+      ...coordinate,
+    };
 
-    
-        this.space.setOrigin(
-        coordinate,
-        );
+    this.space.setOrigin(
+      coordinate,
+    );
 
     this.camera.zoom =
       zoom;
@@ -261,7 +277,9 @@ export class World {
   }
 
   onObjectRemoved(
-    listener: (id: string) => void,
+    listener: (
+      id: string,
+    ) => void,
   ): () => void {
     this.objectRemovedListeners.add(
       listener,
@@ -273,29 +291,30 @@ export class World {
       );
     };
   }
+
   updateObjectTransform(
-  id: string,
-  transform: WorldObject['transform'],
-): void {
-  const object =
-    this.objects.get(id);
+    id: string,
+    transform: WorldObject['transform'],
+  ): void {
+    const object =
+      this.objects.get(id);
 
-  if (!object) {
-    return;
+    if (!object) {
+      return;
+    }
+
+    object.transform = {
+      position: {
+        ...transform.position,
+      },
+
+      rotation: {
+        ...transform.rotation,
+      },
+
+      scale: {
+        ...transform.scale,
+      },
+    };
   }
-
-  object.transform = {
-    position: {
-      ...transform.position,
-    },
-
-    rotation: {
-      ...transform.rotation,
-    },
-
-    scale: {
-      ...transform.scale,
-    },
-  };
-}
 }

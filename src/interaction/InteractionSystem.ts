@@ -1,8 +1,18 @@
-import type { MapMouseEvent } from 'maplibre-gl';
+import type {
+  MapMouseEvent,
+} from 'maplibre-gl';
 
-import type { World } from '../core/World';
-import type { WorldObject } from '../core/WorldObject';
-import type { MapRenderer } from '../renderer/MapRenderer';
+import type {
+  World,
+} from '../core/World';
+
+import type {
+  WorldObject,
+} from '../core/WorldObject';
+
+import type {
+  MapRenderer,
+} from '../renderer/MapRenderer';
 
 const PICKABLE_LAYERS = [
   'world-buildings-3d',
@@ -15,6 +25,9 @@ const PICKABLE_LAYERS = [
 export class InteractionSystem {
   private readonly panel: HTMLElement;
 
+  private readonly unsubscribeSelection:
+    () => void;
+
   constructor(
     private readonly world: World,
     private readonly renderer: MapRenderer,
@@ -26,39 +39,135 @@ export class InteractionSystem {
       this.handleClick.bind(this),
     );
 
-    this.world.onSelectionChanged(
-      this.handleSelectionChanged.bind(
-        this,
-      ),
-    );
+    this.unsubscribeSelection =
+      this.world.onSelectionChanged(
+        this.handleSelectionChanged.bind(
+          this,
+        ),
+      );
+  }
+
+  destroy(): void {
+    this.unsubscribeSelection();
   }
 
   private handleClick(
     event: MapMouseEvent,
   ): void {
+    const map =
+      this.renderer.map;
+
+    /*
+     * Query everything beneath the cursor first.
+     *
+     * This is intentional while we are
+     * debugging the selection pipeline.
+     */
     const features =
-      this.renderer.map.queryRenderedFeatures(
+      map.queryRenderedFeatures(
         event.point,
-        {
-          layers: PICKABLE_LAYERS,
-        },
       );
 
-    if (features.length === 0) {
-      this.world.selectObject(null);
+    console.log(
+      '[InteractionSystem] Clicked features:',
+      features,
+    );
+
+    if (
+      features.length === 0
+    ) {
+      console.log(
+        '[InteractionSystem] Nothing was clicked.',
+      );
+
+      this.world.selectObject(
+        null,
+      );
+
       return;
     }
 
+    /*
+     * Prefer one of our world layers.
+     */
     const feature =
+      features.find(
+        (candidate) =>
+          candidate.layer &&
+          PICKABLE_LAYERS.includes(
+            candidate.layer.id,
+          ),
+      ) ??
       features[0];
 
-    if (feature.id == null) {
-      this.world.selectObject(null);
+    console.log(
+      '[InteractionSystem] Selected feature:',
+      feature,
+    );
+
+    /*
+     * Try MapLibre's feature ID first.
+     */
+    let objectId:
+      string | null = null;
+
+    if (
+      feature.id !== undefined &&
+      feature.id !== null
+    ) {
+      objectId =
+        String(feature.id);
+    }
+
+    /*
+     * Fall back to properties.objectId.
+     */
+    if (
+      !objectId &&
+      feature.properties?.objectId !==
+        undefined &&
+      feature.properties?.objectId !==
+        null
+    ) {
+      objectId =
+        String(
+          feature.properties.objectId,
+        );
+    }
+
+    /*
+     * Fall back to properties.id.
+     */
+    if (
+      !objectId &&
+      feature.properties?.id !==
+        undefined &&
+      feature.properties?.id !==
+        null
+    ) {
+      objectId =
+        String(
+          feature.properties.id,
+        );
+    }
+
+    if (!objectId) {
+      console.warn(
+        '[InteractionSystem] Feature has no object ID:',
+        feature,
+      );
+
+      this.world.selectObject(
+        null,
+      );
+
       return;
     }
 
-    const objectId =
-      String(feature.id);
+    console.log(
+      '[InteractionSystem] WorldObject ID:',
+      objectId,
+    );
 
     const object =
       this.world.getObject(
@@ -67,13 +176,26 @@ export class InteractionSystem {
 
     if (!object) {
       console.warn(
-        'Rendered feature has no WorldObject:',
+        '[InteractionSystem] No WorldObject found for rendered feature:',
         objectId,
       );
 
-      this.world.selectObject(null);
+      console.log(
+        '[InteractionSystem] Registered WorldObjects:',
+        this.world.getObjects(),
+      );
+
+      this.world.selectObject(
+        null,
+      );
+
       return;
     }
+
+    console.log(
+      '[InteractionSystem] Selecting:',
+      object,
+    );
 
     this.world.selectObject(
       object.id,
@@ -83,7 +205,14 @@ export class InteractionSystem {
   private handleSelectionChanged(
     object: WorldObject | null,
   ): void {
-    this.updatePanel(object);
+    console.log(
+      '[InteractionSystem] Selection changed:',
+      object,
+    );
+
+    this.updatePanel(
+      object,
+    );
   }
 
   private createPanel(): HTMLElement {
@@ -97,14 +226,18 @@ export class InteractionSystem {
     }
 
     const panel =
-      document.createElement('aside');
+      document.createElement(
+        'aside',
+      );
 
     panel.id =
       'selection-panel';
 
     panel.hidden = true;
 
-    document.body.appendChild(panel);
+    document.body.appendChild(
+      panel,
+    );
 
     return panel;
   }
@@ -114,14 +247,18 @@ export class InteractionSystem {
   ): void {
     if (!object) {
       this.panel.hidden = true;
+
       this.panel.replaceChildren();
+
       return;
     }
 
     this.panel.hidden = false;
 
     const title =
-      document.createElement('div');
+      document.createElement(
+        'div',
+      );
 
     title.className =
       'selection-title';
@@ -130,57 +267,85 @@ export class InteractionSystem {
       object.type.toUpperCase();
 
     const id =
-      document.createElement('div');
+      document.createElement(
+        'div',
+      );
 
     id.className =
       'selection-id';
 
     id.textContent =
-      object.id;
+      `ID: ${object.id}`;
 
     const location =
-      document.createElement('div');
-    
-    const localPosition =
-  document.createElement('div');
-
-localPosition.className =
-  'selection-local-position';
-
-const local =
-  this.world.getObjectLocalPosition(
-    object,
-  );
-
-localPosition.textContent =
-  `World: X ${local.x.toFixed(2)}m • ` +
-  `Y ${local.y.toFixed(2)}m • ` +
-  `Z ${local.z.toFixed(2)}m`;
-
+      document.createElement(
+        'div',
+      );
 
     location.className =
       'selection-location';
 
     location.textContent =
-      `${object.transform.position.latitude.toFixed(6)}, ` +
-`${object.transform.position.longitude.toFixed(6)}`
+      `Latitude: ${object.transform.position.latitude.toFixed(6)}\n` +
+      `Longitude: ${object.transform.position.longitude.toFixed(6)}\n` +
+      `Elevation: ${object.transform.position.elevation.toFixed(2)}m`;
+
+    const localPosition =
+      document.createElement(
+        'div',
+      );
+
+    localPosition.className =
+      'selection-local-position';
+
+    const local =
+      this.world.getObjectLocalPosition(
+        object,
+      );
+
+    localPosition.textContent =
+      `World: X ${local.x.toFixed(2)}m • ` +
+      `Y ${local.y.toFixed(2)}m • ` +
+      `Z ${local.z.toFixed(2)}m`;
+
     const dimensions =
-    document.createElement('div');
+      document.createElement(
+        'div',
+      );
 
     dimensions.className =
-        'selection-dimensions';
+      'selection-dimensions';
 
-        if (object.dimensions) {
-        dimensions.textContent =
-            `Height: ${object.dimensions.height.toFixed(1)}m • ` +
-            `Base: ${object.dimensions.baseHeight.toFixed(1)}m`;
+    if (object.dimensions) {
+      dimensions.textContent =
+        `Height: ${object.dimensions.height.toFixed(1)}m • ` +
+        `Base: ${object.dimensions.baseHeight.toFixed(1)}m`;
     } else {
-    dimensions.textContent =
+      dimensions.textContent =
         'No 3D dimensions';
     }
 
+    const source =
+      document.createElement(
+        'div',
+      );
+
+    source.className =
+      'selection-source';
+
+    if (object.source) {
+      source.textContent =
+        `Source: ${object.source.provider} • ` +
+        `Layer: ${object.source.layer}`;
+    } else {
+      source.textContent =
+        'Source: Unknown';
+    }
+
     const properties =
-      document.createElement('pre');
+      document.createElement(
+        'pre',
+      );
 
     properties.className =
       'selection-properties';
@@ -193,12 +358,13 @@ localPosition.textContent =
       );
 
     this.panel.replaceChildren(
-  title,
-  id,
-  location,
-  localPosition,
-  dimensions,
-  properties,
-);
+      title,
+      id,
+      location,
+      localPosition,
+      dimensions,
+      source,
+      properties,
+    );
   }
 }

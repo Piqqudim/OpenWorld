@@ -1,8 +1,10 @@
 html,
 body {
   margin: 0;
+
   width: 100%;
   height: 100%;
+
   overflow: hidden;
 }
 
@@ -14,6 +16,8 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+
+  background: #0c0f14;
 }
 
 #world {
@@ -21,12 +25,18 @@ body {
   height: 100%;
 }
 
+/* =========================================================
+   SELECTION PANEL
+   ========================================================= */
+
 #selection-panel {
   position: fixed;
+
   top: 20px;
   right: 20px;
 
   width: 320px;
+  max-width: calc(100vw - 40px);
   max-height: 70vh;
 
   padding: 18px;
@@ -35,25 +45,45 @@ body {
 
   border-radius: 12px;
 
-  background: rgba(12, 15, 20, 0.94);
+  background:
+    rgba(12, 15, 20, 0.94);
 
   color: #ffffff;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.10);
 
   box-shadow:
     0 12px 40px
     rgba(0, 0, 0, 0.35);
 
-  backdrop-filter: blur(12px);
+  backdrop-filter:
+    blur(12px);
+
+  -webkit-backdrop-filter:
+    blur(12px);
 
   z-index: 100;
 
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 
   pointer-events: none;
+
+  animation:
+    selection-panel-in
+    160ms
+    ease-out;
 }
+
+/* =========================================================
+   SELECTION TITLE
+   ========================================================= */
 
 .selection-title {
   font-size: 12px;
+
   font-weight: 700;
 
   letter-spacing: 0.12em;
@@ -62,6 +92,10 @@ body {
 
   margin-bottom: 8px;
 }
+
+/* =========================================================
+   OBJECT ID
+   ========================================================= */
 
 .selection-id {
   font-size: 11px;
@@ -75,20 +109,92 @@ body {
   margin-bottom: 12px;
 }
 
+/* =========================================================
+   LOCATION
+   ========================================================= */
+
 .selection-location {
   font-size: 14px;
 
+  line-height: 1.6;
+
+  white-space: pre-line;
+
   margin-bottom: 14px;
+
+  color: #ffffff;
 }
+
+/* =========================================================
+   LOCAL WORLD POSITION
+   ========================================================= */
+
+.selection-local-position {
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  margin-bottom: 14px;
+
+  color: #aeb7c2;
+}
+
+/* =========================================================
+   DIMENSIONS
+   ========================================================= */
+
+.selection-dimensions {
+  font-size: 13px;
+
+  line-height: 1.5;
+
+  margin-bottom: 14px;
+
+  color: #00e5ff;
+}
+
+/* =========================================================
+   SOURCE
+   ========================================================= */
+
+.selection-source {
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  margin-bottom: 14px;
+
+  color: #8f99a6;
+}
+
+/* =========================================================
+   PROPERTIES
+   ========================================================= */
 
 .selection-properties {
   margin: 0;
 
   padding: 12px;
 
+  box-sizing: border-box;
+
+  width: 100%;
+
   border-radius: 8px;
 
-  background: rgba(255, 255, 255, 0.06);
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.06);
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
 
   font-size: 11px;
 
@@ -98,16 +204,73 @@ body {
 
   word-break: break-word;
 
+  overflow-x: auto;
+
   color: #d7dce2;
 }
-.selection-dimensions {
-  font-size: 13px;
-  margin-bottom: 14px;
-  color: #00e5ff;
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+#selection-panel::-webkit-scrollbar {
+  width: 6px;
 }
 
-.selection-local-position {
-  font-size: 12px;
-  margin-bottom: 14px;
-  color: #aeb7c2;
+#selection-panel::-webkit-scrollbar-track {
+  background:
+    rgba(255, 255, 255, 0.03);
+}
+
+#selection-panel::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.18);
+
+  border-radius: 999px;
+}
+
+#selection-panel::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(255, 255, 255, 0.28);
+}
+
+/* =========================================================
+   ANIMATION
+   ========================================================= */
+
+@keyframes selection-panel-in {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(-8px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+/* =========================================================
+   SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 600px) {
+  #selection-panel {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+
+    width: auto;
+    max-width: none;
+
+    max-height: 60vh;
+
+    padding: 15px;
+  }
 }

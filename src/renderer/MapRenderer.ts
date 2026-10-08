@@ -5,6 +5,7 @@ import {
 } from 'maplibre-gl';
 
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import type { World } from '../core/World';
@@ -21,31 +22,44 @@ export class MapRenderer {
     this.map = new Map({
       container,
 
-      style: 'https://tiles.openfreemap.org/styles/liberty',
+      style:
+        'https://tiles.openfreemap.org/styles/liberty',
 
       center: [
         world.camera.position.longitude,
         world.camera.position.latitude,
       ],
 
-      zoom: world.camera.zoom,
-      bearing: world.camera.bearing,
-      pitch: world.camera.pitch,
+      zoom:
+        world.camera.zoom,
+
+      bearing:
+        world.camera.bearing,
+
+      pitch:
+        world.camera.pitch,
 
       maxPitch: 85,
-      attributionControl:{
-        compact: true
-      }
+
+      attributionControl: {
+        compact: true,
+      },
     });
 
-    this.map.on('style.load', () => {
-      this.enableGlobe();
-      this.enableTerrain();
-    });
+    this.map.on(
+      'style.load',
+      () => {
+        this.enableGlobe();
+        this.enableTerrain();
+      },
+    );
 
-    this.map.on('move', () => {
-      this.syncWorldCamera();
-    });
+    this.map.on(
+      'move',
+      () => {
+        this.syncWorldCamera();
+      },
+    );
   }
 
   private enableGlobe(): void {
@@ -55,24 +69,36 @@ export class MapRenderer {
   }
 
   private enableTerrain(): void {
-    if (this.map.getSource('terrain-dem')) {
+    if (
+      this.map.getSource(
+        'terrain-dem',
+      )
+    ) {
       return;
     }
 
-    this.map.addSource('terrain-dem', {
-      type: 'raster-dem',
-      url: 'https://tiles.mapterhorn.com/tilejson.json',
-      tileSize: 256,
-    });
+    this.map.addSource(
+      'terrain-dem',
+      {
+        type: 'raster-dem',
+
+        url:
+          'https://tiles.mapterhorn.com/tilejson.json',
+
+        tileSize: 256,
+      },
+    );
 
     this.map.setTerrain({
       source: 'terrain-dem',
+
       exaggeration: 1,
     });
   }
 
   private syncWorldCamera(): void {
-    const center = this.map.getCenter();
+    const center =
+      this.map.getCenter();
 
     this.world.updateCamera(
       {
@@ -80,8 +106,11 @@ export class MapRenderer {
         longitude: center.lng,
         elevation: 0,
       },
+
       this.map.getZoom(),
+
       this.map.getBearing(),
+
       this.map.getPitch(),
     );
   }
@@ -99,31 +128,42 @@ export class MapRenderer {
   }
 
   onClick(
-    callback: (event: MapMouseEvent) => void,
+    callback: (
+      event: MapMouseEvent,
+    ) => void,
   ): void {
-    this.map.on('click', callback);
+    this.map.on(
+      'click',
+      callback,
+    );
   }
 
   onMoveEnd(
     callback: () => void,
   ): void {
-    this.map.on('moveend', callback);
+    this.map.on(
+      'moveend',
+      callback,
+    );
+  }
+
+  onReady(
+    callback: () => void,
+  ): void {
+    if (
+      this.map.isStyleLoaded()
+    ) {
+      callback();
+      return;
+    }
+
+    this.map.once(
+      'style.load',
+      callback,
+    );
   }
 
   destroy(): void {
     this.map.remove();
   }
-onReady(
-  callback: () => void,
-): void {
-  if (this.map.isStyleLoaded()) {
-    callback();
-    return;
-  }
-
-  this.map.once(
-    'style.load',
-    callback,
-  );
-}
 }
