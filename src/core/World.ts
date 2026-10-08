@@ -1,6 +1,9 @@
 import type { WorldCamera } from './WorldCamera';
 import type { WorldCoordinate } from './WorldCoordinate';
 import type { WorldObject } from './WorldObject';
+import {
+  WorldSpace,
+} from './WorldSpace';
 
 export type WorldListener = (
   coordinate: WorldCoordinate,
@@ -16,6 +19,7 @@ export type WorldSelectionListener = (
 
 export class World {
   readonly camera: WorldCamera;
+  readonly space: WorldSpace;
 
   private objects =
     new Map<string, WorldObject>();
@@ -39,6 +43,10 @@ export class World {
     camera: WorldCamera,
   ) {
     this.camera = camera;
+    this.space =
+    new WorldSpace(
+      camera.position,
+    );
   }
 
   addObject(
@@ -122,7 +130,13 @@ export class World {
       ...this.camera.position,
     };
   }
-
+ getObjectLocalPosition(
+  object: WorldObject,
+) {
+  return this.space.toLocal(
+    object.transform.position,
+  );
+}
   selectObject(
     id: string | null,
   ): void {
@@ -194,6 +208,11 @@ export class World {
     this.camera.position =
       coordinate;
 
+    
+        this.space.setOrigin(
+        coordinate,
+        );
+
     this.camera.zoom =
       zoom;
 
@@ -254,4 +273,29 @@ export class World {
       );
     };
   }
+  updateObjectTransform(
+  id: string,
+  transform: WorldObject['transform'],
+): void {
+  const object =
+    this.objects.get(id);
+
+  if (!object) {
+    return;
+  }
+
+  object.transform = {
+    position: {
+      ...transform.position,
+    },
+
+    rotation: {
+      ...transform.rotation,
+    },
+
+    scale: {
+      ...transform.scale,
+    },
+  };
+}
 }

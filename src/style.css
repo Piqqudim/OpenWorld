@@ -100,3 +100,14 @@ body {
 
   color: #d7dce2;
 }
+.selection-dimensions {
+  font-size: 13px;
+  margin-bottom: 14px;
+  color: #00e5ff;
+}
+
+.selection-local-position {
+  font-size: 12px;
+  margin-bottom: 14px;
+  color: #aeb7c2;
+}

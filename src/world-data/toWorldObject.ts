@@ -1,34 +1,49 @@
-import type {
-  Geometry,
-} from 'geojson';
+import type { Geometry } from 'geojson';
 
-import type {
-  WorldFeature,
-} from './WorldData';
+import type { WorldObject } from '../core/WorldObject';
+import {
+  createWorldTransform,
+} from '../core/WorldTransform';
 
-import type {
-  WorldObject,
-} from '../core/WorldObject';
+import type { WorldFeature } from './WorldData';
 
+import {
+  getWorldDimensions,
+} from './getWorldDimensions';
 export function toWorldObject(
   feature: WorldFeature,
 ): WorldObject {
+  const properties = {
+    ...feature.properties,
+  };
+
+  const position =
+    getFeaturePosition(
+      feature.geometry,
+    );
+
+  const dimensions =
+    getWorldDimensions(
+      feature.type,
+      properties,
+    );
+
   return {
     id: feature.id,
 
     type: feature.type,
 
-    position:
-      getFeaturePosition(
-        feature.geometry,
+    transform:
+      createWorldTransform(
+        position,
       ),
 
     geometry:
       feature.geometry,
 
-    properties: {
-      ...feature.properties,
-    },
+    dimensions,
+
+    properties,
 
     source: {
       ...feature.source,

@@ -1,6 +1,8 @@
 import type { Geometry } from 'geojson';
 
+import type { WorldDimensions } from './WorldDimensions';
 import type { WorldCoordinate } from './WorldCoordinate';
+import type { WorldTransform } from './WorldTransform';
 
 export type WorldObjectType =
   | 'road'
@@ -15,9 +17,11 @@ export interface WorldObject {
 
   type: WorldObjectType;
 
-  position: WorldCoordinate;
+  transform: WorldTransform;
 
   geometry?: Geometry;
+
+  dimensions?: WorldDimensions;
 
   properties: Record<string, unknown>;
 

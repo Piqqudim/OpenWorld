@@ -9,7 +9,7 @@ import type {
   Geometry,
 } from 'geojson';
 
-
+import type { WorldFeature } from '../world-data/WorldData';
 import type {
   WorldFeatureStore,
 } from '../world-data/WorldFeatureStore';
@@ -169,20 +169,122 @@ private updateSelection(): void {
 
               geometry:
                 feature.geometry as Geometry,
+properties: {
+  ...feature.properties,
 
-              properties: {
-                ...feature.properties,
+  worldType:
+    feature.type,
 
-                worldType:
-                  feature.type,
+  worldId:
+    feature.id,
 
-                worldId:
-                  feature.id,
-              },
+  worldHeight:
+    this.getWorldHeight(feature),
+
+  worldBaseHeight:
+    this.getWorldBaseHeight(feature),
+},
             }),
           ),
     };
   }
+  private getWorldHeight(
+  feature: WorldFeature,
+): number {
+  if (
+    feature.type !== 'building'
+  ) {
+    return 0;
+  }
+
+  const height =
+    this.readNumber(
+      feature.properties,
+      [
+        'height',
+        'render_height',
+      ],
+    );
+
+  const levels =
+    this.readNumber(
+      feature.properties,
+      [
+        'building:levels',
+        'levels',
+      ],
+    );
+
+  if (height !== undefined) {
+    return Math.max(
+      height,
+      1,
+    );
+  }
+
+  if (levels !== undefined) {
+    return Math.max(
+      levels * 3,
+      1,
+    );
+  }
+
+  return 8;
+}
+
+private getWorldBaseHeight(
+  feature: WorldFeature,
+): number {
+  if (
+    feature.type !== 'building'
+  ) {
+    return 0;
+  }
+
+  const base =
+    this.readNumber(
+      feature.properties,
+      [
+        'min_height',
+        'render_min_height',
+      ],
+    );
+
+  return Math.max(
+    base ?? 0,
+    0,
+  );
+}
+
+private readNumber(
+  properties: Record<string, unknown>,
+  keys: string[],
+): number | undefined {
+  for (const key of keys) {
+    const value =
+      properties[key];
+
+    if (
+      typeof value === 'number' &&
+      Number.isFinite(value)
+    ) {
+      return value;
+    }
+
+    if (
+      typeof value === 'string'
+    ) {
+      const parsed =
+        Number.parseFloat(value);
+
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+  }
+
+  return undefined;
+}
   private addSelectionLayers(): void {
   this.map.addLayer({
     id: 'world-selection-fill',
@@ -357,26 +459,15 @@ private updateSelection(): void {
         'fill-extrusion-color':
           '#b8aa96',
 
-        'fill-extrusion-height': [
-          'coalesce',
+      'fill-extrusion-height': [
+  'get',
+  'worldHeight',
+],
 
-          ['get', 'render_height'],
-
-          ['get', 'height'],
-
-          8,
-        ],
-
-        'fill-extrusion-base': [
-          'coalesce',
-
-          ['get', 'render_min_height'],
-
-          ['get', 'min_height'],
-
-          0,
-        ],
-
+'fill-extrusion-base': [
+  'get',
+  'worldBaseHeight',
+],
         'fill-extrusion-opacity':
           0.9,
 

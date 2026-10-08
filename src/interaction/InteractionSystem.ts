@@ -140,13 +140,44 @@ export class InteractionSystem {
 
     const location =
       document.createElement('div');
+    
+    const localPosition =
+  document.createElement('div');
+
+localPosition.className =
+  'selection-local-position';
+
+const local =
+  this.world.getObjectLocalPosition(
+    object,
+  );
+
+localPosition.textContent =
+  `World: X ${local.x.toFixed(2)}m • ` +
+  `Y ${local.y.toFixed(2)}m • ` +
+  `Z ${local.z.toFixed(2)}m`;
+
 
     location.className =
       'selection-location';
 
     location.textContent =
-      `${object.position.latitude.toFixed(6)}, ` +
-      `${object.position.longitude.toFixed(6)}`;
+      `${object.transform.position.latitude.toFixed(6)}, ` +
+`${object.transform.position.longitude.toFixed(6)}`
+    const dimensions =
+    document.createElement('div');
+
+    dimensions.className =
+        'selection-dimensions';
+
+        if (object.dimensions) {
+        dimensions.textContent =
+            `Height: ${object.dimensions.height.toFixed(1)}m • ` +
+            `Base: ${object.dimensions.baseHeight.toFixed(1)}m`;
+    } else {
+    dimensions.textContent =
+        'No 3D dimensions';
+    }
 
     const properties =
       document.createElement('pre');
@@ -162,10 +193,12 @@ export class InteractionSystem {
       );
 
     this.panel.replaceChildren(
-      title,
-      id,
-      location,
-      properties,
-    );
+  title,
+  id,
+  location,
+  localPosition,
+  dimensions,
+  properties,
+);
   }
 }
